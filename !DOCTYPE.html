@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-code</title>
+    <style>
+            </style>
+</head>
+<body>
+    <header>
+        <h1>Bio-code</h1>
+        <nav>
+            <ul>
+                <li><a href="#" id="login-link">Login/Signup</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="content">
+            <div id="user-actions">
+                <select id="action-select">
+                    <option value="">Select Action</option>
+                    <option value="inspiration">Get Inspiration</option>
+                    <option value="store">Store Invention</option>
+                    <option value="sell">Sell Invention</option>
+                    <option value="certify">Certify & Patent</option>
+                    <option value="check">Check Uniqueness</option>
+                </select>
+            </div>
+        </section>
+    </main>
+
+    <div id="login-form" class="modal">
+        <h2>Login/Signup</h2>
+        <form id="user-form">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="contact">Contact:</label>
+            <input type="text" id="contact" name="contact" required>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <label for="address">Address:</label>
+            <input type="text" id="address" name="address" required>
+            <button type="submit">Submit</button>
+            <button type="button" class="close-button">Close</button>
+        </form>
+    </div>
+
+    <div id="action-form" class="modal">
+        <h2>Action</h2>
+        <form id="action-submit-form" enctype="multipart/form-data">
+            <label for="pythonFile">Python File:</label>
+            <input type="file" id="pythonFile" name="pythonFile" accept=".py" required>
+            <textarea id="programCode" name="programCode" style="display:none;"></textarea>
+            <button type="submit">Submit</button>
+            <button type="button" class="close-button">Close</button>
+        </form>
+    </div>
+
+    <div id="programs-view" class="modal">
+        <h2>Programs</h2>
+        <div id="program-list"></div>
+        <button type="button" class="close-button">Close</button>
+    </div>
+
+    <div id="overlay" class="overlay"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginLink = document.getElementById('login-link');
+            const loginForm = document.getElementById('login-form');
+            const userActions = document.getElementById('user-actions');
+            const actionSelect = document.getElementById('action-select');
+            const actionForm = document.getElementById('action-form');
+            const actionSubmitForm = document.getElementById('action-submit-form');
+            const overlay = document.getElementById('overlay');
+            const closeButtons = document.querySelectorAll('.close-button');
+            const programCodeField = document.getElementById('programCode');
+            let loggedInUser = null;
+            let currentAction = '';
+
+            function showModal(modal) {
+                modal.style.display = 'block';
+                overlay.style.display = 'block';
+            }
+
+            function hideModal(modal) {
+                modal.style.display = 'none';
+                overlay.style.display = 'none';
+            }
+
+            loginLink.addEventListener('click', () => showModal(loginForm));
+
+            closeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const modal = button.closest('.modal');
+                    hideModal(modal);
+                });
+            });
+
+            overlay.addEventListener('click', () => {
+                document.querySelectorAll('.modal').forEach(modal => hideModal(modal));
+            });
+
+            document.getElementById('user-form').addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(event.target);
+                fetch('/login', { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Login Response:", data);
+                        if (data.success) {
+                            loggedInUser = data.user;
+                            userActions.style.display = 'inline';
+                            loginLink.style.display = 'none';
+                            hideModal(loginForm);
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => console.error('Login Error:', error));
+            });
+
+            actionSelect.addEventListener('change', () => {
+                currentAction = actionSelect.value;
+                if (currentAction) {
+                    if (currentAction === 'check') {
+                        programCodeField.style.display = 'block';
+                    } else {
+                        programCodeField.style.display = 'none';
+                    }
+                    showModal(actionForm);
+                }
+            });
+
+            actionSubmitForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(event.target);
+                let url = '';
+                if (currentAction === 'store') {
+                    url = '/store';
+                    formData.append("userId", loggedInUser.id);
+                } else if (currentAction === 'check') {
+                    url = '/check';
+                    formData.append("programCode", programCodeField.value);
+                } else if (currentAction === 'inspiration') {
+                    url = '/inspiration';
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => alert("Topic: " + data.topic))
+                        .catch(error => console.error('Inspiration Error:', error));
+                    hideModal(actionForm);
+                    return;
+                } else if (currentAction === 'certify') {
+                    url = '/certify';
+                    formData.append("userId", loggedInUser.id);
+                } else if (currentAction === 'sell') {
+                    url = '/sell';
+                    formData.append("userId", loggedInUser.id);
+                    const price = prompt("Enter price:");
+                    if (price) {
+                        formData.append("price", price);
+                    } else {
+                        alert("Price is required.");
+                        return;
+                    }
+                }
+
+                if (url) {
+                    fetch(url, { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log("Action Response:", data);
+                            alert(data.message);
+                        })
+                        .catch(error => console.error('Action Error:', error));
+                    hideModal(actionForm);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
